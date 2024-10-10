@@ -1,0 +1,15 @@
+
+- name: Create VM for scrape job
+  azure.azcollection.azure_rm_virtualmachine:
+    resource_group: nyctaxireportingrg
+    name: nyctaxireportingvm
+    vm_size: Standard_B1s
+    admin_username: adminuser
+    admin_password: SecurePassword123!
+    image:
+      offer: UbuntuServer
+      publisher: Canonical
+      sku: '18.04-LTS'
+      version: latest
+  register: vm_creation
+

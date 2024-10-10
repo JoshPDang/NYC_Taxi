@@ -1,0 +1,12 @@
+# Ignore environment files
+.env
+config.yml
+secrets/
+
+# Ignore log files
+*.log
+
+# Ignore specific file extensions (if needed)
+*.key
+*.pem
+
