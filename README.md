@@ -11,7 +11,7 @@ The transformed data will then be stored in a suitable target for **visualizatio
 This project will demonstrate my ability to build a scalable, automated data pipeline using **ADF’s scheduling and orchestration capabilities**, efficiently handling data transformations and integrating with visualization tools to derive actionable insights from the NYC Taxi dataset.
 
 
-![Overview](images/Overview/overview.png)
+![Overview](images/Overview/Overview.png)
 
 
 #  Table of contents:
