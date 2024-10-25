@@ -41,7 +41,12 @@ For detailed instruction, please refer: [Data Ingestion from Blob Container](rea
 
 ### 2. Data Ingestion from HTTP
 
+The second ingestion method is using http connection. Imagine that you can schedule a monthly data scraping job to get the download link from the source website, then the pipeline can directly extract the parquet file from the website and copy it into ADLS2.
 
+
+![Data Ingestion from HTTP Overview](images/create_ingestion_pipeline_taxi_http/Overview.png)
+
+For detailed instruction, please refer: [Data Ingestion from HTTP](readme/data_ingestion_from_http.md)
 
 ##### Create Transformation Dataflow: NYC Taxi Yellow
 
