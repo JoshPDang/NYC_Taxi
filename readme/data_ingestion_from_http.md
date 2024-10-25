@@ -8,7 +8,7 @@ A new JSON file will be generated, containing information such as the base URL, 
 
 ![Data Ingestion Taxi Green](../images/create_ingestion_pipeline_taxi_http/ingestion_pl_taxi_http_2.png)
 
-The JSON is automatically upload to blob container::
+The JSON is automatically upload to blob container:
 
 ![Data Ingestion Taxi Green](../images/create_ingestion_pipeline_taxi_http/ingestion_pl_taxi_http_3.png)
 
