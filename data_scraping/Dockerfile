@@ -1,88 +1,36 @@
-# FROM python:3.9
+# Use the official Python slim image
+FROM python:3.9-slim
 
-# # Install necessary dependencies and Chrome
-# RUN apt-get update -qq -y && \
-#     apt-get install -y \
-#         libasound2 \
-#         libatk-bridge2.0-0 \
-#         libgtk-4-1 \
-#         libnss3 \
-#         xdg-utils \
-#         wget \
-#         unzip \
-#         libdrm2 \
-#         libxkbcommon0 \
-#         libxcomposite1 \
-#         libxdamage1 \
-#         libxrandr2 && \
-#     wget -q -O chrome-linux64.zip https://bit.ly/chrome-linux64-121-0-6167-85 && \
-#     unzip chrome-linux64.zip && \
-#     rm chrome-linux64.zip && \
-#     mv chrome-linux64 /opt/chrome/ && \
-#     ln -s /opt/chrome/chrome /usr/local/bin/ && \
-#     wget -q -O chromedriver-linux64.zip https://bit.ly/chromedriver-linux64-121-0-6167-85 && \
-#     unzip -j chromedriver-linux64.zip chromedriver-linux64/chromedriver && \
-#     rm chromedriver-linux64.zip && \
-#     mv chromedriver /usr/local/bin/
+ENV DEBIAN_FRONTEND=noninteractive
 
-# # Print Google Chrome version
-# RUN google-chrome --version
+# Install necessary packages including Chromium and Chromedriver
+RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-driver \
+    libglib2.0-0 \
+    libnss3 \
+    libgconf-2-4 \
+    libxss1 \
+    fonts-liberation \
+    libappindicator3-1 \
+    libgbm1 \
+    xdg-utils \
+    dbus-x11 \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
-# # Print ChromeDriver version
-# RUN chromedriver --version
+# Set the PATH to include Chromium and Chromedriver
+ENV PATH="/usr/bin:$PATH"
 
-# # Clean up apt caches to reduce image size
-# RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Copy requirements and install Python dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# # Set up working directory
-# WORKDIR /app
+# Copy the Python script into the container
+COPY scrapejob.py /app/scrapejob.py
 
-# # Copy and install Python dependencies
-# COPY requirements.txt .
-# RUN pip install -r requirements.txt
-
-# # Copy the scrape job file
-# COPY scrape_job.py .
-
-# # Run the scrape job script
-# CMD ["python", "scrape_job.py"]
-
-
-FROM python:3.9
-
-# Install necessary system dependencies and Chrome
-RUN apt-get update -qq -y && \
-    apt-get install -y \
-        wget \
-        unzip \
-        libasound2 \
-        libatk-bridge2.0-0 \
-        libgtk-4-1 \
-        libnss3 \
-        xdg-utils \
-        libx11-xcb1 \
-        libxcomposite1 \
-        libxdamage1 \
-        libxrandr2
-
-# Download and install Google Chrome
-RUN wget -q -O chrome-linux64.zip https://storage.googleapis.com/chrome-for-testing-public/129.0.6668.70/linux64/chrome-linux64.zip && \
-    unzip chrome-linux64.zip -d /opt/chrome/ && \
-    ln -s /opt/chrome/chrome-linux64/chrome /usr/local/bin/google-chrome && \
-    rm chrome-linux64.zip
-
-# Clean up apt caches to reduce image size
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Set up working directory
+# Set the working directory
 WORKDIR /app
 
-# Copy and install Python dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Copy the scrape job file
-COPY scrape_job.py .
-
-# Run the scrape job script
-CMD ["python", "scrape_job.py"]
+# Set the default command to run the script
+CMD ["python", "scrapejob.py"]

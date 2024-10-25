@@ -1,119 +1,122 @@
 import os
-import subprocess
-import zipfile
-import requests
+import json
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
-# Use home directory to avoid permission issues
-HOME_DIR = os.path.expanduser("~")
-CHROME_DIR = os.path.join(HOME_DIR, "chrome")
-CHROMEDRIVER_DIR = os.path.join(HOME_DIR, "bin")
+# Detect if running inside Docker
+IS_DOCKER = os.path.exists('/.dockerenv')
 
-def download_and_install(url, extract_to, filename):
-    """Download and extract a zip file from the provided URL."""
-    print(f"Downloading from {url}...")
-    local_filename = os.path.join(extract_to, filename)
-    response = requests.get(url)
-    with open(local_filename, 'wb') as file:
-        file.write(response.content)
-    print(f"Extracting {local_filename} to {extract_to}...")
-    with zipfile.ZipFile(local_filename, 'r') as zip_ref:
-        zip_ref.extractall(extract_to)
-    os.remove(local_filename)
-    print(f"Installation completed for {filename}.")
+# Paths for Chrome and Chromedriver based on environment. You may need to change your paths
+CHROME_BINARY_PATH = "/usr/bin/chromium" if IS_DOCKER else "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+CHROMEDRIVER_PATH = "/usr/bin/chromedriver" if IS_DOCKER else "/opt/homebrew/bin/chromedriver"
 
-def install_google_chrome():
-    """Download and install Google Chrome."""
-    chrome_url = "https://storage.googleapis.com/chrome-for-testing-public/129.0.6668.70/mac-arm64/chrome-mac-arm64.zip"
-    if not os.path.exists(CHROME_DIR):
-        os.makedirs(CHROME_DIR, exist_ok=True)
-    download_and_install(chrome_url, CHROME_DIR, "chrome-mac-arm64.zip")
-    os.symlink(os.path.join(CHROME_DIR, "chrome-mac-arm64", "chrome"), os.path.join(HOME_DIR, "bin", "google-chrome"))
-    print("Google Chrome installed successfully.")
-
-def install_chromedriver():
-    """Download and install ChromeDriver."""
-    chromedriver_url = "https://storage.googleapis.com/chrome-for-testing-public/129.0.6668.70/mac-arm64/chromedriver-mac-arm64.zip"
-    if not os.path.exists(CHROMEDRIVER_DIR):
-        os.makedirs(CHROMEDRIVER_DIR, exist_ok=True)
-    download_and_install(chromedriver_url, CHROMEDRIVER_DIR, "chromedriver-mac-arm64.zip")
-    os.chmod(os.path.join(CHROMEDRIVER_DIR, "chromedriver"), 0o755)
-    print("ChromeDriver installed successfully.")
-
-# Installing Google Chrome and ChromeDriver
-print("Downloading and installing Google Chrome...")
-install_google_chrome()
-
-print("Downloading and installing ChromeDriver...")
-install_chromedriver()
-
-# Set specific year and month for July 2024
-current_year = 2024
-month_name = "July"
-
-# Set up Chrome options for Docker or Headless
+# Set Chrome options
 chrome_options = Options()
-chrome_options.add_argument("--headless")  # Ensure Chrome runs in headless mode
-chrome_options.add_argument("--no-sandbox")  # Bypass OS security model, necessary for Docker
-chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
-chrome_options.add_argument("--disable-gpu")  # Disable GPU when running headless
-chrome_options.add_argument("--window-size=1920,1080")  # Optional: Set window size for screenshots
-chrome_options.add_argument("--remote-debugging-port=9222")  # Optional: Enable remote debugging
+chrome_options.binary_location = CHROME_BINARY_PATH
+chrome_options.add_argument("--headless")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--window-size=1920,1080")
 
-# Initialize the WebDriver
-service = Service(os.path.join(CHROMEDRIVER_DIR, "chromedriver"))
-driver = webdriver.Chrome(service=service, options=chrome_options)
+# Initialize WebDriver
+try:
+    print(f"Using Chromedriver from: {CHROMEDRIVER_PATH}")
+    service = Service(CHROMEDRIVER_PATH)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    print("Chromedriver initialized successfully.")
+except Exception as e:
+    print(f"Error initializing Chromedriver: {e}")
+    exit(1)
 
 # Open the TLC trip record page
 url = "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
-driver.get(url)
+print(f"Opening URL: {url}")
 
-# Wait for the page to load completely
-WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "p")))
+try:
+    driver.get(url)
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "p")))
+    print("Page loaded successfully.")
+except Exception as e:
+    print(f"Error loading the page: {e}")
+    driver.quit()
+    exit(1)
 
-# Extract the page source
-page_source = driver.page_source
+# Parse the page with BeautifulSoup
+soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-# Use BeautifulSoup to parse the page content
-soup = BeautifulSoup(page_source, 'html.parser')
+# Set the year and month
+current_year = 2024
+month_name = "February"
+download_links = []  # List to store download link details
 
-# Find the section with the target year
-year_section = soup.find('p', string=str(current_year))  # Dynamically find target year
+try:
+    year_section = soup.find('p', string=str(current_year))
+    if year_section:
+        month_section = year_section.find_next('strong', string=month_name)
+        if month_section:
+            yellow_taxi_link = month_section.find_next('a', title="Yellow Taxi Trip Records")
+            if yellow_taxi_link:
+                href = yellow_taxi_link.get('href')
+                print(f"Yellow Taxi Trip Data Link for {month_name} {current_year}: {href}")
 
-yellow_taxi_link = None  # Default to None in case not found
-if year_section:
-    month_section = year_section.find_next('strong', string=month_name)
-    if month_section:
-        yellow_taxi_link = month_section.find_next('a', title="Yellow Taxi Trip Records")
-        if yellow_taxi_link:
-            href = yellow_taxi_link.get('href')
-            print(f"Yellow Taxi Trip Data Link for {month_name} {current_year}: {href}")
+                # Split the URL into base and relative parts
+                base_url = "/".join(href.split("/")[:3])
+                relative_url = "/".join(href.split("/")[3:])
+                sink_filename = f"yellow_tripdata_{current_year}_{month_name}.parquet"
 
-# Close the browser after scraping
+                # Append the link details to the list
+                download_links.append({
+                    "sourceBaseURL": base_url,
+                    "sourceRelativeURL": relative_url,
+                    "sinkFileName": sink_filename,
+                    "sinkDirectory": month_name
+                })
+except Exception as e:
+    print(f"Error parsing page content: {e}")
+
 driver.quit()
 
-def download_file(url, local_filename):
-    """
-    Function to download a file from a given URL and save it locally.
-    :param url: URL to the file
-    :param local_filename: local path where the file should be saved
-    """
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()  # Will raise an HTTPError if the HTTP request returned an unsuccessful status code
-        with open(local_filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192): 
-                f.write(chunk)
-    return local_filename
+# Save the download links as a JSON file
+output_file = "download_links.json"
+with open(output_file, "w") as f:
+    json.dump(download_links, f, indent=4)
 
-# Example usage: Download the file if the yellow taxi link was found
-if yellow_taxi_link:
-    href = yellow_taxi_link.get('href')
-    print(f"Downloading Yellow Taxi Trip Data for {month_name} {current_year}...")
-    file_path = download_file(href, f"yellow_tripdata_{current_year}-{month_name}.parquet")
-    print(f"File downloaded successfully: {file_path}")
+print(f"Download links saved to {output_file}.")
+
+# Upload the JSON file to Azure Blob Storage
+def upload_to_blob_storage(file_path, container_name, blob_name, connection_string):
+    try:
+        # Create a BlobServiceClient
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+
+        # Get the container client
+        container_client = blob_service_client.get_container_client(container_name)
+
+        # # Create the container if it does not exist
+        # container_client.create_container()
+
+        # Get the BlobClient
+        blob_client = container_client.get_blob_client(blob_name)
+
+        # Upload the file
+        with open(file_path, "rb") as data:
+            blob_client.upload_blob(data, overwrite=True)
+
+        print(f"File '{file_path}' uploaded to container '{container_name}' as blob '{blob_name}'.")
+    except Exception as e:
+        print(f"Error uploading file to Blob Storage: {e}")
+
+# Define your Azure Blob Storage details
+CONNECTION_STRING = "your connection string"  # Replace with your connection string
+CONTAINER_NAME = "config"  # Replace with your container name
+BLOB_NAME = "download_links.json"  
+
+# Upload the JSON file
+upload_to_blob_storage(output_file, CONTAINER_NAME, BLOB_NAME, CONNECTION_STRING)
