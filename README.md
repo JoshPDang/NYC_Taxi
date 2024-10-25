@@ -1,340 +1,45 @@
 
+#  Overview
 
-#### Set up Resources:
 
-##### Resource Group:
-- Look for Resource Group in the search bar then create a new one
+In this project, I will implement a complete end-to-end data flow, covering all stages from data ingestion to final visualization. The primary objective is to create a seamless data pipeline using **Azure Data Factory (ADF)**, which will automate data movement, transformation, and loading processes. The dataset I will use is the **NYC Taxi dataset**, which contains detailed trip data, including pick-up and drop-off locations, passenger counts, fares, and other relevant metrics. 
 
-![Create Resource Group](images/create_resources/create_resource_group.png)
+The workflow will begin with the **ingestion** of raw data from a blob storage container, followed by **transformation steps** such as cleaning, aggregation, and enrichment of the data (e.g., adding taxi zone information). I will implement these transformations using ADF’s **data flow transformations** and **pipeline orchestration** features to ensure efficient processing.
 
-##### Blob storage, Azure Data Lake, SQL database
+The transformed data will then be stored in a suitable target for **visualization**, such as a data warehouse or storage account, where I can connect to visualization tools like **Power BI** or **Tableau**. This visualization will provide key insights into taxi trends, including trip frequency, passenger behavior, and fare distribution across different regions and times.
 
-- Create Blob Storage Account: Search for Storage accounts then create a new one. Make sure you select the newly generated resource group. Keep other settings as default
+This project will demonstrate my ability to build a scalable, automated data pipeline using **ADF’s scheduling and orchestration capabilities**, efficiently handling data transformations and integrating with visualization tools to derive actionable insights from the NYC Taxi dataset.
 
-![Create Blob Storage Acc](images/create_storage_account/create_blob_storage_acc.png)
 
-- Create Azure Data Lake Storage Gen 2 (ADLS gen 2): the process is the same as above. However, in the Advanced tab, enable hierarchical namespace:
+![Overview](images/Overview/overview.png)
 
-![Create ADL Storage Acc](images/create_storage_account/create_ADLS.png)
 
-- Create SQL Database: look for SQL database and create a new one.
+#  Table of contents:
+ 1. Overview
+ 2. Table of contents
+ 3. Implementation
 
-![Create SQl Database](images/create_SQL_database/create_SQL_database.png)
 
-- In the Server setup. You may need to create new server:
+#  Implementation
+##  Set up Resources:
 
-![Create SQl Database](images/create_SQL_database/create_SQL_server.png)
-![Create SQl Database](images/create_SQL_database/create_SQL_server_2.png)
+In this section, we are going to generated some resources such as resource group, storage accounts, containers, SQL database, Databricks and connect them all to Azure Data Factory via linked services.
 
+![Create Resources](images/create_resources/resource_group_overview.png)
 
-- Configure SQL Database setup to reduce cost:
+For detailed instruction, please refer: [Create_Resources](readme/create_resources.md)
 
-![Create SQl Database](images/create_SQL_database/create_SQL_database_2.png)
-![Create SQl Database](images/create_SQL_database/create_SQL_database_3.png)
+## Data Ingestion:
+### 1. Data Ingestion from Azure Blob Storage
 
-- In the NYC resource group, you'll see 2 storage accounts, SQL server and SQL database have been generated. Next step is to create containers and database.
+The first method I’m using for data ingestion involves creating an ingestion pipeline. When a data file is uploaded to the blob container, it triggers a series of pipeline activities. These activities include checking if the file exists and validating whether the data contains exactly 19 columns. If the validation passes, the file is copied to ADLS2. If not, a failure notification is sent to Discord.
 
-![Resources Generated](images/create_SQL_database/resources_generated.png)
+![Data Ingestion from blob storage](images/data_ingestion/Data_Ingestion_from_Blob_Container.png)
 
-- Navigate to the first storage account, then Storage browser --> Blob containers --> Add container:
 
-![create container](images/create_containers/create_container_1.png)
+For detailed instruction, please refer: [Data Ingestion from Blob Container](readme/data_ingestion_from_blob_storage.md)
 
-- Name the new container then click create:
-
-![create container](images/create_containers/create_container_2.png)
-
-- Repeat the 2 steps above to create a new container in the Data Lake storage account.
-- [Download Azure Storage Explorer](https://azure.microsoft.com/en-us/products/storage/storage-explorer#Download-4), you can view the 2 containers under 2 storage accounts.
-
-![create container](images/create_containers/create_container_3.png)
-
-- You can also create new containers using Storage Explorer by right-click on Blob Containers --> Create Blob Container:
-
-![create container](images/create_containers/create_container_4.png)
-
-- Follow the guide above, create these below containers:
-
-![create container](images/create_containers/create_container_5.png)
-
-- Upload yellow taxi data and the taxi zone lookup file into containers:
-
-![create container](images/create_containers/create_container_6.png)
-![create container](images/create_containers/create_container_7.png)
-
-- [Download Azure Data Studio](https://learn.microsoft.com/en-us/azure-data-studio/download-azure-data-studio?view=sql-server-ver16&tabs=win-install%2Cwin-user-install%2Credhat-install%2Cwindows-uninstall%2Credhat-uninstall) and connect with your database. You'll be able to see nyc-taxi-report-db in Azure Data Studio.
-
-![Connect database with Azure Data Studio](images/create_resources/Azure-data-studio.png)
-
-##### Databricks
-
-- Look for Azure Databricks in the search bar, then create a new Databricks workspace
-
-![Create Databricks workspace](images/databricks/create_databricks_service.png)
-
-- Create Databricks cluster: click on Compute then Create compute
-
-![Create Databricks cluster](images/databricks/create_databricks_cluster.png)
-![Create Databricks cluster](images/databricks/create_databricks_cluster_2.png)
-
-- Mount blob storage to databricks: firstly, we need to create a service principal. Look for Azure Intra ID in the search bar then click App registrations --> New registration:
-
-![create service principal](images/databricks/mount_storage_1.png)
-![create service principal](images/databricks/mount_storage_2.png)
-
-- Copy the essential info to somewhere, then click on Certificates & secrets:
-
-![create service principal](images/databricks/mount_storage_3.png)
-
-- Create a new secret and copy your secret to somewhere:
-
-![create service principal](images/databricks/mount_storage_4.png)
-
-- Go to your data lake storage, then click on Access control (IAM) --> Add role assignment:
-
-![mount container](images/databricks/mount_storage_5.png)
-
-- Select role as blob storage data contributor and choose the service principal we have just created above:
-
-![mount container](images/databricks/mount_storage_6.png)
-![mount container](images/databricks/mount_storage_7.png)
-
-- Back to Databricks, create 2 new folder nyc-taxi/set-up under Workspace, then upload mount-storage.py file into it. The file can be found under Notebooks folder in this repo:
-
-![mount container](images/databricks/mount_storage_8.png)
-
-
-- In mount-storage file, copy client id, secret and directory you have created above into the configs. Run the script to check if you can connect to the service.
-
-![mount container](images/databricks/mount_storage_9.png)
-
-- Change storage and container names and run all the scripts to mount:
-
-![mount container](images/databricks/mount_storage_10.png)
-
-- To check if you have successfully mounted all the containers:
-
-![mount container](images/databricks/mount_storage_11.png)
-
-- In the set-up folder, there is also a file called import-schema.py, the purpose is to set schema to the taxi data. You may need to change the script to your blob container and run the file.
-
-![mount container](images/databricks/mount_storage_12.png)
-
-
-
-##### Data Factory
-
-
-- Navigate to Azure Data Factory, then create a new service instance. Keep all the settings as default
-
-![Create Data Factory](images/create_resources/create_data_factory.png)
-
-- Access to the instance, then launch studio:
-
-![Launch DF studio](images/launch_DF_studio.png)
-
-##### Linked Services
-
-- Next step is to create linked services to the 2 storages: blob storage and the data lake storage. First, click on Manage --> Linked Services --> New
-
-![Create linked services](images/create_linked_services/create_linked_services_1.png)
-
-![Create linked services](images/create_linked_services/create_linked_services_2.png)
-
-- This linked service should connect to the blob storage account:
-
-![Create linked services](images/create_linked_services/create_linked_services_3.png)
-
-- Repeat the same steps, but this time link to Data Lake storage account:
-
-![Create linked services](images/create_linked_services/create_linked_services_4.png)
-![Create linked services](images/create_linked_services/create_linked_services_5.png)
-
-#### Data Ingestion from Azure Blob:
-
-##### Create datasets
-- First we need to create new Datasets. Navigate to Author --> click 3-dot option next to Datasets:
-
-![Create datasets](images/create_datasets/create_dataset_1.png)
-
-- Select Blob Storage
-
-![Create datasets](images/create_datasets/create_dataset_2.png)
-
-- File type is parquet:
-
-![Create datasets](images/create_datasets/create_dataset_3.png)
-
-- Linked service should be the one connected to the blob storage account. Click on the folder icon to select the path
-
-![Create datasets](images/create_datasets/create_dataset_4.png)
-
-- Repeat the same steps, but this time select Azure data lake and the linked service connecting to it.
-
-![Create datasets](images/create_datasets/create_dataset_5.png)
-![Create datasets](images/create_datasets/create_dataset_6.png)
-![Create datasets](images/create_datasets/create_dataset_7.png)
-
-- We need another dataset for lookup, the file type this time is Delimeted Text:
-
-![Create datasets](images/create_datasets/create_dataset_8.png)
-
-
-
-##### Create Ingestion pipeline
-
-- The first pipeline we are going to generate is to copy the parquet file from blob storage to the data lake under the condition that the file must exist in blob storage. After being copied, all the files should be removed from containers.
-    - So first we need to check if files exist
-    - Get the metadata of the directory to get all the files details
-    - Filter parquet file only then get the file name
-    - Get metadata of parquet file such as column count, structure...
-    - If column count = 19, then authorize copy activity, otherwise send notification to Discord
-    - Delete all files after copied
-
-![Pipeline 1](images/create_ingestion_pipeline/pipeline_map_1.png)
-
-
-- Click on the 3-dot option next to Pipellines to create a new pipeline:
-
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_1.png)
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_2.png)
-
-- Under Move and transform, drag Copy data to the pipeline Dashboard:
-
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_3.png)
-
-- Select the source and destination (sink) of the data ingestion:
-
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_4.png)
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_5.png)
-
-- Test the pipeline by clicking on Debug:
-
-![Create pipelines](images/create_ingestion_pipeline/create_pipeline_6.png)
-
-- Validate if files exists: Under General, drag Validation to the pipeline board:
-
-![File Validation](images/create_ingestion_pipeline/file_validation_1.png)
-
-- The validation is going to check for a day, sleep every 600 seconds (10 minutes) and min file size is 1024MB.
-
-![File Validation](images/create_ingestion_pipeline/file_validation_2.png)
-
-
-- Next step we'll get the metadata of the dataset so that we can filter the parquet file and get the metadata out of it. Drag "Get Metadata" to the pipeline board, then connect "If files exist to it".
-
-![Dataset Metadata](images/create_ingestion_pipeline/get_dataset_metadata_1.png)
-
-- Click on Debug, you'll see the metadata of the dataset:
-
-![Dataset Metadata](images/create_ingestion_pipeline/get_dataset_metadata_2.png)
-
-- Now we need to filter parquet file:
-
-![Filter parquet file](images/create_ingestion_pipeline/filter_parquet_file_1.png)
-![Filter parquet file](images/create_ingestion_pipeline/filter_parquet_file_2.png)
-![Filter parquet file](images/create_ingestion_pipeline/filter_parquet_file_3.png)
-
-- Get the name of the first parquet file: drag Set variable to the pipeline dashboard then configure as below:
-
-![Get parquet file path](images/create_ingestion_pipeline/get_parquet_file_path.png)
-
-- Now we can get the Metadata from the parquet file: drag Get metadata into the pipeline, connect it with Set Varible. In the Settings, we need to create a new dataset.
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_1.png)
-
-- The container type is Blob storage and file type is parquet.
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_2.png)
-
-- Create a new parameter in the new dataset:
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_3.png)
-
-- In Connection Setting, set the file name by the new parameter:
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_4.png)
-
-- Get back to the Get Metadata in pipeline, fileName should be set as the variable get from the previous step. Also add some new arguments in the Field list:
-
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_5.png)
-
-- Click debug to test the pipeline, you'll see that the metadata has been successfully extracted:
-
-![Get parquet file Metadata](images/create_ingestion_pipeline/get_parquet_file_metadata_6.png)
-
-- Next step is to check if the dataset has 18 columns. If True, we'll allow to copy data into ADL storage. Otherwise, We'll send a notification. Firstly, drag If condition into the pipeline and connect it with the previous step
-
-
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_1.png)
-
-- Write the condition for column count:
-
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_2.png)
-
-- In the True Activities, copy "Copy NYC Taxi Yellow Data" step to it.
-
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_3.png)
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_4.png)
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_5.png)
-
-- In the False Activities, drag in Fail and Webhook. Set a simple fail message and error code. In Webhook, paste into your Discord URL.
-
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_6.png)
-
-- Delete the "Copy NYC Taxi Yellow Data" in the pipeline, we don't need it anymore.
-
-![Column Count Condition](images/create_ingestion_pipeline/column_count_condition_7.png)
-
-- After copying the source file into data lake container, we need to delete all the files in the blob container. Go back to the True Statement in If Condition and drag Delete into it. We need to create a new dataset which point to the whole container.
-
-![Delete Files](images/create_ingestion_pipeline/delete_file_after_copied_1.png)
-![Delete Files](images/create_ingestion_pipeline/delete_file_after_copied_2.png)
-![Delete Files](images/create_ingestion_pipeline/delete_file_after_copied_3.png)
-
-- Click on Debug to test the pipeline:
-
-![Delete Files](images/create_ingestion_pipeline/delete_file_after_copied_4.png)
-
-
-
-##### Connect ingestion pipeline to Databricks notebook
-
-- Instead of manually running the Import Schema notebook in Databricks then the ingestion pipeline can start working, we can connect the notebook job at the beginning. Therefore, whenever we upload the data file to the container, it will trigger to notebook job then the whole ingestion.
-
-- First we need to create an access token in Databricks. See how to create [here](https://docs.databricks.com/en/dev-tools/auth/pat.html)
-
-- Drag Databricks Notebook into the pipeline, we need to create a new linked service:
-
-![Databricks notebook ingestion](images/databricks_notebook_ingestion_pipeline/notebook_ingestions_1.png)
-![Databricks notebook ingestion](images/databricks_notebook_ingestion_pipeline/notebook_ingestions_2.png)
-
-- Select the notebook path:
-
-![Databricks notebook ingestion](images/databricks_notebook_ingestion_pipeline/notebook_ingestions_3.png)
-
-- Review the updated pipeline:
-
-![Databricks notebook ingestion](images/databricks_notebook_ingestion_pipeline/notebook_ingestions_4.png)
-
-
-##### Create trigger for Ingestion pipeline:
-
-- Next we need to set up a trigger for ingestion pipeline which is whenever we upload the data file into container, it should process the pipeline.
-
-![Taxi Yellow Ingestion Trigger](images/create_trigger/taxi_yellow_ingestion_trigger_1.png)
-
-- Let's try delete all the files in blob container and upload a new one. You can see that your pipeline will start running.
-
-![Taxi Yellow Ingestion Trigger](images/create_trigger/taxi_yellow_ingestion_trigger_2.png)
-
-
-##### Create ingestion pipeline to ingest taxi zone lookup file:
-
-- Follow the instruction below, you can create a simple pipeline to ingest lookup file. Since the lookup file is .csv file, it is unnecessary to run a notebook to import schema.
-
-![Lookup file ingestion](images/create_ingestion_pipeline/create_ingestion_pipeline_lookup_file.png)
+### 2. Data Ingestion from HTTP
 
 
 
@@ -359,6 +64,10 @@ In this dataflow, we are going to look up taxi zone in the lookup file and add t
 
 ![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_5.png)
 
+- We need to create new columns for Pickup and Dropoff in the lookup file. Add Derived Column, then create those new columns as below:
+
+![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_5_2.png)
+
 - Select necessary columns: 
 
 ![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_6.png)
@@ -368,7 +77,7 @@ In this dataflow, we are going to look up taxi zone in the lookup file and add t
 
 ![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_8.png)
 
-_ Add Lookup in the next transformation step. PULocationID and DOLocationID in Taxi data should match with LocationID in the lookup file.
+- Add Lookup in the next transformation step. PULocationID and DOLocationID in Taxi data should match with PULocationID and DOLocationID in the lookup file.
 
 ![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_9.png)
 
@@ -471,15 +180,54 @@ _ Add Lookup in the next transformation step. PULocationID and DOLocationID in T
 
 ![NYC Taxi yellow dataflow](images/create_dataflow_1/create_data_flow_39.png)
 
-##### Create A Pipeline to combine the ingestion of lookup file and the taxi yellow data:
+##### Create NYC Taxi Yellow SQL Table
 
-- Create a new pipeline and drag 2 Execute Pipeline into the board:
+- Access to your SQL database you have created before. Open Query Editor (you also can use Azure Data Studio to create tables):
 
-![Ingestion Pipeline](images/create_pipeline_lookup_nyctaxiyellow_ingestion/ingestion_pipeline_1.png)
-![Ingestion Pipeline](images/create_pipeline_lookup_nyctaxiyellow_ingestion/ingestion_pipeline_2.png)
-![Ingestion Pipeline](images/create_pipeline_lookup_nyctaxiyellow_ingestion/ingestion_pipeline_3.png)
+![Create SQL Table](images/create_sql_table/create_sql_table_1.png)
 
-##### Create Pipeline for Transformation Data Flow:
+
+- Upload SQL file into the query editor or you can write your own:
+
+![Create SQL Table](images/create_sql_table/create_sql_table_2.png)
+
+- Run the Query to generate table:
+
+![Create SQL Table](images/create_sql_table/create_sql_table_3.png)
+
+
+
+##### Create A Pipeline to copy data to SQL database:
+
+- Create a new pipeline and drag Copy data into the pipeline
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_1.png)
+
+- Source is the processed dataset:
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_2.png)
+
+- We need to create a new dataset for sink:
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_3.png)
+
+- Dataset type is SQL:
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_4.png)
+
+- We also need to create a new linked service:
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_5.png)
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_6.png)
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_7.png)
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_8.png)
+
+- You can run a simple query to test your table:
+
+![Copy data to SQL](images/copy_data_to_SQL_database/copy_processed_data_to_SQL_9.png)
+
+
+##### Create A Pipeline for Transformation Data Flow:
 
 - Create a new pipeline then drag Data Flow into the pipeline:
 
@@ -489,10 +237,49 @@ _ Add Lookup in the next transformation step. PULocationID and DOLocationID in T
 
 ![Transformation Pipeline](images/create_transformation_pipeline/transformation_pipeline_2.png)
 
-- Add trigger to the pipeline: this trigger will be the same as the other 2 pipelines. When the file is copied from the blob storage to data lake, it will start the pipeline.
 
-![Transformation Pipeline Trigger](images/create_transformation_pipeline/transformation_pipeline_3.png)
-![Transformation Pipeline Trigger](images/create_transformation_pipeline/transformation_pipeline_4.png)
+##### Create A Master Pipeline:
+
+- So we already 1 pipelines for data ingestion, 1 pipeline for transformation and the other one to copy into SQL database, we need to connect them altogether. The idea is that whenever the parquet file is uploaded into blob container, it will automatically trigger the data ingestion pipeline. When it finished, it will then start transformation process, and finally copy the processed data into SQL database.
+
+- Create a new pipeline and drag 3 Execute pipelines into the board:
+
+![Master Pipeline](images/create_master_pipeline/master_pipeline_1.png)
+
+- First is to excute NYC Taxi Yellow Ingestion Data:
+
+![Master Pipeline](images/create_master_pipeline/master_pipeline_1.png)
+
+- Since this is the first pipeline, we don't need it to be waited on completion of the previous pipeline:
+
+![Master Pipeline](images/create_master_pipeline/master_pipeline_2.png)
+
+- Second execution is transformation and it needs to wait until the ingestion pipeline to be finished.
+
+![Master Pipeline](images/create_master_pipeline/master_pipeline_3.png)
+
+- Third execution is copy processed data into SQL database:
+
+![Master Pipeline](images/create_master_pipeline/master_pipeline_4.png)
+
+
+##### Create A Trigger for Master Pipeline:
+
+- The will start when we upload the parquet file into blob container. So firstly, we need to removed all the triggers we created before, then create a new one.
+
+![Master Pipeline Trigger](images/create_trigger/master_pipeline_trigger_1.png)
+![Master Pipeline Trigger](images/create_trigger/master_pipeline_trigger_2.png)
+
+
+
+
+
+
+
+
+
+
+
 
 
 

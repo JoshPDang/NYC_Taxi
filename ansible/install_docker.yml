@@ -1,61 +1,103 @@
 ---
-- hosts: all
-  become: true
+- name: Create Azure VM and run scrape job from Docker Hub
+  hosts: localhost
+  connection: local
+  gather_facts: no  # Keep minimal facts to speed up the playbook
+
   vars:
-    container_count: 4
-    default_container_name: docker
-    default_container_image: ubuntu
-    default_container_command: sleep 1d
+    resource_group: nyctaxireportingrg
+    location: Australia Southeast
+    vm_name: scrapejob-vm
+    admin_username: azureuser
+    ssh_public_key: "{{ lookup('file', '~/.ssh/scrapejob_azure_key.pub') }}"
+    storage_account_name: scrapejobstorage
+    container_name: scraped-data
+    json_output_file: "/home/{{ admin_username }}/output/download_links.json"
+    docker_image_name: joshphuocdang/nyc-taxi-data-scrape-app:latest 
 
   tasks:
-    - name: Install aptitude
-      apt:
-        name: aptitude
-        state: latest
-        update_cache: true
 
-    - name: Install required system packages
-      apt:
-        pkg:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - software-properties-common
-          - python3-pip
-          - virtualenv
-          - python3-setuptools
-        state: latest
-        update_cache: true
+    - name: Create Azure resource group
+      azure.azcollection.azure_rm_resourcegroup:
+        name: "{{ resource_group }}"
+        location: "{{ location }}"
 
-    - name: Add Docker GPG apt Key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+    - name: Create Azure VM
+      azure.azcollection.azure_rm_virtualmachine:
+        resource_group: "{{ resource_group }}"
+        name: "{{ vm_name }}"
+        vm_size: Standard_B1s
+        admin_username: "{{ admin_username }}"
+        ssh_public_keys:
+          - path: /home/{{ admin_username }}/.ssh/authorized_keys
+            key_data: "{{ ssh_public_key }}"
+        image:
+          offer: UbuntuServer
+          publisher: Canonical
+          sku: 20.04-LTS
+          version: latest
+        network_interfaces:
+          - name: "{{ vm_name }}-nic"
+            primary: true
+        os_disk:
+          name: "{{ vm_name }}-osdisk"
+          managed_disk_type: Standard_LRS
+          disk_size_gb: 30
 
-    - name: Add Docker Repository
-      apt_repository:
-        repo: deb https://download.docker.com/linux/ubuntu focal stable
-        state: present
+    - name: Wait for SSH to become available on the VM
+      ansible.builtin.wait_for:
+        host: "{{ vm_name }}"
+        port: 22
+        timeout: 300
 
-    - name: Update apt and install docker-ce
-      apt:
-        name: docker-ce
-        state: latest
-        update_cache: true
+    - name: Install Docker on the VM
+      ansible.builtin.shell: |
+        sudo apt update &&
+        sudo apt install -y apt-transport-https ca-certificates curl software-properties-common &&
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &&
+        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" &&
+        sudo apt update &&
+        sudo apt install -y docker-ce &&
+        sudo usermod -aG docker {{ admin_username }}
+      remote_user: "{{ admin_username }}"
+      become: yes
+      delegate_to: "{{ vm_name }}"
 
-    - name: Install Docker Module for Python
-      pip:
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
         name: docker
+        state: started
+      remote_user: "{{ admin_username }}"
+      become: yes
+      delegate_to: "{{ vm_name }}"
 
-    - name: Pull default Docker image
-      community.docker.docker_image:
-        name: "{{ default_container_image }}"
-        source: pull
+    - name: Pull Docker image from Docker Hub
+      ansible.builtin.shell: |
+        sudo docker pull {{ docker_image_name }}
+      remote_user: "{{ admin_username }}"
+      become: yes
+      delegate_to: "{{ vm_name }}"
 
-    - name: Create default containers
-      community.docker.docker_container:
-        name: "{{ default_container_name }}{{ item }}"
-        image: "{{ default_container_image }}"
-        command: "{{ default_container_command }}"
-        state: present
-      with_sequence: count={{ container_count }}
+    - name: Create output directory on the VM
+      ansible.builtin.file:
+        path: "/home/{{ admin_username }}/output"
+        state: directory
+        mode: '0755'
+      remote_user: "{{ admin_username }}"
+      become: yes
+      delegate_to: "{{ vm_name }}"
+
+    - name: Run Docker container to execute scrape job
+      ansible.builtin.shell: |
+        sudo docker run --rm -v /home/{{ admin_username }}/output:/app/output {{ docker_image_name }}
+      remote_user: "{{ admin_username }}"
+      become: yes
+      delegate_to: "{{ vm_name }}"
+
+    - name: Upload JSON file to Azure Blob Storage
+      azure.azcollection.azure_rm_storageblob:
+        container: "{{ container_name }}"
+        account_name: "{{ storage_account_name }}"
+        blob: "download_links.json"
+        file_path: "{{ json_output_file }}"
+        public_access: blob

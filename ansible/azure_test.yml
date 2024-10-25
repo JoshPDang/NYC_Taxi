@@ -1,0 +1,7 @@
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Ensure Python interpreter is correct
+      debug:
+        msg: "Python interpreter: {{ ansible_python_interpreter }}"
+
