@@ -1,4 +1,4 @@
-#### 1.1 Create datasets
+####  Create datasets
 - First we need to create new Datasets. Navigate to Author --> click 3-dot option next to Datasets:
 
 ![Create datasets](../images/create_datasets/create_dataset_1.png)
@@ -27,7 +27,7 @@
 
 
 
-#### 1.2 Create Ingestion pipeline
+####  Create Ingestion pipeline
 
 - The first pipeline we are going to generate is to copy the parquet file from blob storage to the data lake under the condition that the file must exist in blob storage. After being copied, all the files should be removed from containers.
     - So first we need to check if files exist
@@ -145,7 +145,7 @@
 
 
 
-#### 1.3 Connect ingestion pipeline to Databricks notebook
+####  Connect ingestion pipeline to Databricks notebook
 
 - Instead of manually running the Import Schema notebook in Databricks then the ingestion pipeline can start working, we can connect the notebook job at the beginning. Therefore, whenever we upload the data file to the container, it will trigger to notebook job then the whole ingestion.
 
@@ -165,7 +165,7 @@
 ![Databricks notebook ingestion](../images/databricks_notebook_ingestion_pipeline/notebook_ingestions_4.png)
 
 
-#### 1.4 Create trigger for Ingestion pipeline:
+####  Create trigger for Ingestion pipeline:
 
 - Next we need to set up a trigger for ingestion pipeline which is whenever we upload the data file into container, it should process the pipeline.
 
@@ -176,7 +176,7 @@
 ![Taxi Yellow Ingestion Trigger](../images/create_trigger/taxi_yellow_ingestion_trigger_2.png)
 
 
-#### 1.5 Create ingestion pipeline for lookup file:
+#### Create ingestion pipeline for lookup file:
 
 Repeat the same steps to copy lookup file from blob container. However, since the lookup file is csv type, you won't need to import schema using databricks. Simple Copy activity in Data Factory can automatically import the schema.
 

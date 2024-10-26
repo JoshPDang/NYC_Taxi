@@ -1,4 +1,4 @@
-#### 2.1 Get Download Link:
+####  Get Download Link:
 
 Execute the scrapejob.py file located in the data_scraping folder. Ensure that all required dependencies are installed by running the requirements.txt file, and you may need to change connection string, container name to connect to your blob container. The program will retrieve the download link from the source website and upload it to the blob container as a JSON file.
 
@@ -8,12 +8,12 @@ A new JSON file will be generated, containing information such as the base URL, 
 
 ![Data Ingestion Taxi Green](../images/create_ingestion_pipeline_taxi_http/ingestion_pl_taxi_http_2.png)
 
-The JSON is automatically upload to blob container:
+The JSON is automatically uploaded to blob container:
 
 ![Data Ingestion Taxi Green](../images/create_ingestion_pipeline_taxi_http/ingestion_pl_taxi_http_3.png)
 
 
-#### 2.2 Create Linked Service:
+####  Create Linked Service:
 
 Next, we need to create a linked service to the http address we just get.
 
@@ -29,7 +29,7 @@ In the Base URL, select the new parameter you have just created:
 
 ![Data Ingestion Taxi Green](../images/create_ingestion_pipeline_taxi_http/ingestion_pl_taxi_http_7.png)
 
-#### 2.2 Create Datasets:
+####  Create Datasets:
 
 We need to create 2 new datasets for the source, sink and a dataset for the download link. The source is from blob container while the sink is from ADLS2. 
 First, create a new dataset for source
@@ -69,7 +69,7 @@ Create a new dataset for downloadlink:
 
 
 
-#### 2.4 Ingestion Pipeline:
+####  Ingestion Pipeline:
 
 For data ingestion via http, we will use lookup activity to read the json file to get download link, then will use the link to directly ingest parquet file into ADLS2.
 
