@@ -36,7 +36,6 @@ This project will demonstrate my ability to build a scalable, automated data pip
     3.6 Publish to Power BI
 
 4. Monitoring
-5. CI/CD
 
 
 #  3. Implementation
@@ -94,6 +93,8 @@ For detailed instruction, please refer: [Ingest processed data into SQL Databse]
 
 ![Master Pipeline](images/create_master_pipeline/Overview.png)
 
+For detailed instruction, please refer: [Ingest processed data into SQL Databse](readme/ingest_processed_data_to_SQL_database.md)
+
 ## 3.6 Publish to Power BI:
 
 
@@ -105,7 +106,7 @@ For detailed instruction, please refer: [Ingest processed data into SQL Databse]
 
 For detailed instruction, please refer: [Publish to Power BI](readme/publish_powerbi.md)
 
-# Monitoring:
+# 4. Monitoring:
 
 - The ADF monitoring system provides real-time visibility into pipelines, activities, and triggers, helping to ensure smooth data operations.
 
